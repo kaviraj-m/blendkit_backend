@@ -1,12 +1,12 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { User } from './entities/user.entity';
-import { Role } from './entities/role.entity';
-import { Quota } from './entities/quota.entity';
-import { DayScholarHosteller } from './entities/day-scholar-hosteller.entity';
-import { College } from './entities/college.entity';
-import { Department } from './entities/department.entity';
+import { User } from '../entities/user.entity';
+import { Role } from '../entities/role.entity';
+import { Quota } from '../entities/quota.entity';
+import { DayScholarHosteller } from '../entities/day-scholar-hosteller.entity';
+import { College } from '../entities/college.entity';
+import { Department } from '../entities/department.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { RedisService } from '../common/redis/redis.service';
@@ -63,11 +63,35 @@ export class UsersService {
     return this.sanitizeUser(savedUser);
   }
 
-  async findAll(): Promise<User[]> {
-    const users = await this.usersRepository.find({
-      relations: ['role', 'quota', 'department', 'college', 'dayScholarHosteller'],
-    });
-    return users.map(user => this.sanitizeUser(user));
+  async findAll(page = 1, limit = 20): Promise<{ users: User[], total: number }> {
+    const skip = (page - 1) * limit;
+    
+    // Use query builder for better performance
+    const query = this.usersRepository.createQueryBuilder('user')
+      .leftJoinAndSelect('user.role', 'role')
+      .leftJoinAndSelect('user.quota', 'quota')
+      .leftJoinAndSelect('user.department', 'department')
+      .leftJoinAndSelect('user.college', 'college')
+      .leftJoinAndSelect('user.dayScholarHosteller', 'dayScholarHosteller')
+      .select([
+        'user.id', 'user.sin_number', 'user.name', 'user.email', 'user.father_name',
+        'user.year', 'user.batch', 'user.phone', 'user.created_at', 'user.updated_at',
+        'role.id', 'role.name',
+        'quota.id', 'quota.name',
+        'department.id', 'department.name',
+        'college.id', 'college.name',
+        'dayScholarHosteller.id', 'dayScholarHosteller.type'
+      ])
+      .skip(skip)
+      .take(limit)
+      .orderBy('user.id', 'ASC');
+      
+    const [users, total] = await query.getManyAndCount();
+    
+    return {
+      users: users.map(user => this.sanitizeUser(user)),
+      total
+    };
   }
 
   async findOne(id: number): Promise<User> {

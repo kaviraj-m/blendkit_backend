@@ -7,11 +7,20 @@ export class College {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ length: 100 })
+  @Column({ unique: true, length: 100 })
   name: string;
+
+  @Column({ unique: true, length: 20, nullable: true })
+  code: string;
 
   @Column({ nullable: true, length: 255 })
   address: string;
+
+  @Column({ nullable: true, length: 50 })
+  city: string;
+
+  @Column({ nullable: true, length: 50 })
+  state: string;
 
   @Column({ nullable: true, length: 20 })
   phone: string;
@@ -19,7 +28,7 @@ export class College {
   @Column({ nullable: true, length: 100 })
   email: string;
 
-  @Column({ nullable: true, length: 100 })
+  @Column({ nullable: true, length: 255 })
   website: string;
 
   @Column({ nullable: true, length: 255 })

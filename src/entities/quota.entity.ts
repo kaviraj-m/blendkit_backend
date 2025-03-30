@@ -7,7 +7,7 @@ export class Quota {
   id: number;
 
   @Column({ unique: true, length: 50 })
-  name: string; // e.g., 'General', 'OBC', 'SC', 'ST', etc.
+  name: string;
 
   @Column({ nullable: true, length: 255 })
   description: string;
