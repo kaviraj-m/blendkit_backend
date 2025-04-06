@@ -21,9 +21,11 @@ export class RolesGuard implements CanActivate {
       return false;
     }
     
-    // Check role access
+    // Check role access - handle both string and object format
     if (typeof user.role === 'string') {
       return requiredRoles.includes(user.role);
+    } else if (user.role && typeof user.role === 'object' && 'name' in user.role) {
+      return requiredRoles.includes(user.role.name);
     }
     
     return false;

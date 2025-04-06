@@ -22,6 +22,10 @@ export const seedRoles = async (dataSource: DataSource): Promise<void> => {
       description: 'Staff role with access to view and manage student data',
     },
     {
+      name: 'hod',
+      description: 'Head of Department role with administrative access to department data',
+    },
+    {
       name: 'academic_director',
       description: 'Academic director role with administrative access to academic data',
     },

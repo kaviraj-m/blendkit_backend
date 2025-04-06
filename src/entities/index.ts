@@ -7,4 +7,6 @@ export { GymSchedule } from './gym-schedule.entity';
 export { College } from './college.entity';
 export { Department } from './department.entity';
 export { DayScholarHosteller } from './day-scholar-hosteller.entity';
-export { Quota } from './quota.entity'; 
+export { Quota } from './quota.entity';
+export { Complaint, ComplaintStatus } from './complaint.entity';
+export { GatePass, GatePassStatus, GatePassType } from './gate-pass.entity'; 

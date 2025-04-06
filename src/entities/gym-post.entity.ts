@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { User } from './user.entity';
 
 @Entity('gym_posts')
@@ -9,22 +9,29 @@ export class GymPost {
   @Column()
   title: string;
 
-  @Column()
+  @Column({ type: 'text', nullable: true })
   content: string;
 
   @Column({ nullable: true })
   imageUrl: string;
 
-  @Column()
-  bodyType: string; // e.g., 'slim', 'muscular', 'weight-loss', etc.
+  @Column({ 
+    nullable: false,
+    default: 'average'
+  })
+  bodyType: string; // e.g., 'lean', 'athletic', 'muscular', 'average', 'other'
 
-  @Column({ nullable: true })
-  exerciseType: string;
+  @Column({ 
+    nullable: false,
+    default: 'strength'
+  })
+  exerciseType: string; // e.g., 'strength', 'cardio', 'flexibility', 'balance', 'sports'
 
   @Column({ default: true })
   isActive: boolean;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { eager: true })
+  @JoinColumn() // Let TypeORM handle the column name based on naming strategy
   createdBy: User;
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })

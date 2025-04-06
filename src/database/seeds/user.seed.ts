@@ -41,7 +41,11 @@ export const seedUsers = async (dataSource: DataSource): Promise<void> => {
   // Find specific roles
   const studentRole = roles.find(role => role.name === 'student');
   const staffRole = roles.find(role => role.name === 'staff');
+  const hodRole = roles.find(role => role.name === 'hod');
+  const academicDirectorRole = roles.find(role => role.name === 'academic_director');
   const gymStaffRole = roles.find(role => role.name === 'gym_staff');
+  const executiveDirectorRole = roles.find(role => role.name === 'executive_director');
+  const securityRole = roles.find(role => role.name === 'security');
   const adminRole = roles.find(role => role.name === 'admin');
   
   // Find management quota
@@ -58,11 +62,14 @@ export const seedUsers = async (dataSource: DataSource): Promise<void> => {
   const hosteller = dayScholarHostellerOptions.find(option => option.type === 'Hosteller');
   
   // Check if required entities were found
-  if (!studentRole || !staffRole || !gymStaffRole || !adminRole || 
+  if (!studentRole || !staffRole || !gymStaffRole || !executiveDirectorRole || !adminRole || 
+      !hodRole || !academicDirectorRole || !securityRole ||
       !managementQuota || !itDepartment || !engineeringCollege || 
       !dayScholar || !hosteller) {
     console.log('Some required entities were not found:');
-    console.log(`studentRole: ${studentRole?.id}, staffRole: ${staffRole?.id}, gymStaffRole: ${gymStaffRole?.id}, adminRole: ${adminRole?.id}`);
+    console.log(`studentRole: ${studentRole?.id}, staffRole: ${staffRole?.id}, gymStaffRole: ${gymStaffRole?.id}`);
+    console.log(`hodRole: ${hodRole?.id}, academicDirectorRole: ${academicDirectorRole?.id}, securityRole: ${securityRole?.id}`);
+    console.log(`executiveDirectorRole: ${executiveDirectorRole?.id}, adminRole: ${adminRole?.id}`);
     console.log(`managementQuota: ${managementQuota?.id}, itDepartment: ${itDepartment?.id}, engineeringCollege: ${engineeringCollege?.id}`);
     console.log(`dayScholar: ${dayScholar?.id}, hosteller: ${hosteller?.id}`);
     return;
@@ -105,6 +112,54 @@ export const seedUsers = async (dataSource: DataSource): Promise<void> => {
       college_id: engineeringCollege.id,
       dayscholar_hosteller_id: dayScholar.id
     },
+    // HOD user
+    {
+      name: 'Robert HOD',
+      email: 'hod@example.com',
+      password: commonPassword,
+      sin_number: 'HOD001',
+      father_name: 'HOD Father',
+      year: 0,
+      batch: 'HOD',
+      phone: '9876543210',
+      role_id: hodRole.id,
+      quota_id: managementQuota.id,
+      department_id: itDepartment.id,
+      college_id: engineeringCollege.id,
+      dayscholar_hosteller_id: dayScholar.id
+    },
+    // Academic Director user
+    {
+      name: 'Academic Director',
+      email: 'academic@example.com',
+      password: commonPassword,
+      sin_number: 'ACAD001',
+      father_name: 'Academic Father',
+      year: 0,
+      batch: 'ACADEMIC',
+      phone: '9876543211',
+      role_id: academicDirectorRole.id,
+      quota_id: managementQuota.id,
+      department_id: itDepartment.id,
+      college_id: engineeringCollege.id,
+      dayscholar_hosteller_id: dayScholar.id
+    },
+    // Security user
+    {
+      name: 'Security Guard',
+      email: 'security@example.com',
+      password: commonPassword,
+      sin_number: 'SEC001',
+      father_name: 'Security Father',
+      year: 0,
+      batch: 'SECURITY',
+      phone: '9876543212',
+      role_id: securityRole.id,
+      quota_id: managementQuota.id,
+      department_id: itDepartment.id,
+      college_id: engineeringCollege.id,
+      dayscholar_hosteller_id: dayScholar.id
+    },
     // Gym Staff user
     {
       name: 'Gym Staff',
@@ -116,6 +171,22 @@ export const seedUsers = async (dataSource: DataSource): Promise<void> => {
       batch: 'STAFF',
       phone: '9876543203',
       role_id: gymStaffRole.id,
+      quota_id: managementQuota.id,
+      department_id: itDepartment.id,
+      college_id: engineeringCollege.id,
+      dayscholar_hosteller_id: dayScholar.id
+    },
+    // Executive Director user
+    {
+      name: 'Executive Director',
+      email: 'director@example.com',
+      password: commonPassword,
+      sin_number: 'DIR001',
+      father_name: 'Director Father',
+      year: 0,
+      batch: 'DIRECTOR',
+      phone: '9876543204',
+      role_id: executiveDirectorRole.id,
       quota_id: managementQuota.id,
       department_id: itDepartment.id,
       college_id: engineeringCollege.id,
@@ -146,7 +217,7 @@ export const seedUsers = async (dataSource: DataSource): Promise<void> => {
       father_name: 'Student Father',
       year: 3,
       batch: '2022-2026',
-      phone: '9876543204',
+      phone: '9876543205',
       role_id: studentRole.id,
       quota_id: managementQuota.id,
       department_id: itDepartment.id,

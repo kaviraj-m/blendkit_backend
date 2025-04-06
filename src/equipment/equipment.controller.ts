@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, HttpStatus, Logger, HttpException } from '@nestjs/common';
 import { EquipmentService } from './equipment.service';
 import { CreateEquipmentDto } from './dto/create-equipment.dto';
 import { UpdateEquipmentDto } from './dto/update-equipment.dto';
@@ -8,9 +8,44 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 
 @ApiTags('equipment')
-@Controller('equipment')
+@Controller(['gym/equipment', 'equipment'])
 export class EquipmentController {
-  constructor(private readonly equipmentService: EquipmentService) {}
+  private readonly logger = new Logger(EquipmentController.name);
+
+  constructor(private readonly equipmentService: EquipmentService) {
+    this.logger.log('EquipmentController initialized with routes: /api/equipment and /api/gym/equipment');
+  }
+
+  @Get('test')
+  @ApiOperation({ summary: 'Test endpoint to diagnose equipment API issues' })
+  async testEquipment() {
+    this.logger.log('Test endpoint called to diagnose equipment API');
+    
+    try {
+      // Try multiple approaches to get equipment data
+      const results = {
+        standardFind: await this.equipmentService.findAll(),
+        directQuery: await this.equipmentService.testDirectQuery(),
+        entityInfo: await this.equipmentService.getEntityInfo()
+      };
+      
+      this.logger.log(`Test results: Standard find returned ${results.standardFind.length} items, direct query returned ${results.directQuery.length} items`);
+      
+      return {
+        success: true,
+        message: 'Equipment API test results',
+        tableUsed: 'equipments',
+        ...results
+      };
+    } catch (error) {
+      this.logger.error(`Error in test endpoint: ${error.message}`, error.stack);
+      return {
+        success: false,
+        error: error.message,
+        stack: error.stack
+      };
+    }
+  }
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -27,8 +62,20 @@ export class EquipmentController {
   @Get()
   @ApiOperation({ summary: 'Get all equipment' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Return all equipment' })
-  findAll() {
-    return this.equipmentService.findAll();
+  async findAll() {
+    this.logger.log('Received request to get all equipment');
+    try {
+      const equipment = await this.equipmentService.findAll();
+      this.logger.log(`Found ${equipment?.length || 0} equipment items`);
+      
+      // Ensure we're returning an array even if service returns null/undefined
+      return equipment || [];
+    } catch (error) {
+      this.logger.error(`Error fetching equipment: ${error.message}`, error.stack);
+      
+      // Return empty array instead of throwing error to client
+      return [];
+    }
   }
 
   @Get(':id')

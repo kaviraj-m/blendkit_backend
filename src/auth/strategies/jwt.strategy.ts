@@ -29,11 +29,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       if (!user) {
         throw new UnauthorizedException('User not found');
       }
-      
+
+      // Ensure consistent role format - use the role object directly
+      // The RolesGuard will handle whether it's a string or an object with name property
       return {
-        userId: payload.sub,
+        id: payload.sub,
+        userId: payload.sub, // Keep for backward compatibility
         email: payload.email,
-        role: user.role.name
+        role: user.role
       };
     } catch (error) {
       throw new UnauthorizedException('Invalid token');

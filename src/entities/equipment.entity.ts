@@ -1,37 +1,37 @@
 import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 
-@Entity('equipments')
+@Entity({ name: 'equipments' })
 export class Equipment {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ name: 'name' })
   name: string;
 
-  @Column()
+  @Column({ name: 'description' })
   description: string;
 
-  @Column()
+  @Column({ name: 'quantity' })
   quantity: number;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, name: 'imageUrl' })
   imageUrl: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, name: 'category' })
   category: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, name: 'trainingType' })
   trainingType: string;
 
-  @Column({ default: true })
+  @Column({ default: true, name: 'isAvailable' })
   isAvailable: boolean;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, name: 'location' })
   location: string;
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', name: 'createdAt' })
   createdAt: Date;
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP', name: 'updatedAt' })
   updatedAt: Date;
 } 
