@@ -11,6 +11,9 @@ export class CreateGatePassTable1744000000000 implements MigrationInterface {
         'pending_hod',
         'approved_by_hod',
         'rejected_by_hod',
+        'pending_hostel_warden',
+        'approved_by_hostel_warden',
+        'rejected_by_hostel_warden',
         'pending_academic_director',
         'approved',
         'rejected_by_academic_director',
@@ -36,6 +39,7 @@ export class CreateGatePassTable1744000000000 implements MigrationInterface {
         "department_id" INTEGER NOT NULL,
         "staff_id" INTEGER,
         "hod_id" INTEGER,
+        "hostel_warden_id" INTEGER,
         "academic_director_id" INTEGER,
         "security_id" INTEGER,
         "status" gate_pass_status_enum NOT NULL DEFAULT 'pending_staff',
@@ -46,6 +50,7 @@ export class CreateGatePassTable1744000000000 implements MigrationInterface {
         "end_date" TIMESTAMP,
         "staff_comment" TEXT,
         "hod_comment" TEXT,
+        "hostel_warden_comment" TEXT,
         "academic_director_comment" TEXT,
         "security_comment" TEXT,
         "checkout_time" TIMESTAMP,
@@ -56,6 +61,7 @@ export class CreateGatePassTable1744000000000 implements MigrationInterface {
         CONSTRAINT "fk_department_gate_pass" FOREIGN KEY ("department_id") REFERENCES "departments"("id") ON DELETE CASCADE,
         CONSTRAINT "fk_staff_gate_pass" FOREIGN KEY ("staff_id") REFERENCES "users"("id") ON DELETE SET NULL,
         CONSTRAINT "fk_hod_gate_pass" FOREIGN KEY ("hod_id") REFERENCES "users"("id") ON DELETE SET NULL,
+        CONSTRAINT "fk_hostel_warden_gate_pass" FOREIGN KEY ("hostel_warden_id") REFERENCES "users"("id") ON DELETE SET NULL,
         CONSTRAINT "fk_academic_director_gate_pass" FOREIGN KEY ("academic_director_id") REFERENCES "users"("id") ON DELETE SET NULL,
         CONSTRAINT "fk_security_gate_pass" FOREIGN KEY ("security_id") REFERENCES "users"("id") ON DELETE SET NULL
       )

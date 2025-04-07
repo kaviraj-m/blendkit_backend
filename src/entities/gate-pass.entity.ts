@@ -9,6 +9,9 @@ export enum GatePassStatus {
   PENDING_HOD = 'pending_hod', // Pending HOD approval
   APPROVED_BY_HOD = 'approved_by_hod', // Approved by HOD
   REJECTED_BY_HOD = 'rejected_by_hod', // Rejected by HOD
+  PENDING_HOSTEL_WARDEN = 'pending_hostel_warden', // Pending Hostel Warden approval (for hostellers only)
+  APPROVED_BY_HOSTEL_WARDEN = 'approved_by_hostel_warden', // Approved by Hostel Warden
+  REJECTED_BY_HOSTEL_WARDEN = 'rejected_by_hostel_warden', // Rejected by Hostel Warden
   PENDING_ACADEMIC_DIRECTOR = 'pending_academic_director', // Pending Academic Director approval
   APPROVED = 'approved', // Fully approved by Academic Director
   REJECTED_BY_ACADEMIC_DIRECTOR = 'rejected_by_academic_director', // Rejected by Academic Director
@@ -121,6 +124,17 @@ export class GatePass {
 
   @Column({ nullable: true })
   checkin_time: Date;
+
+  // Hostel Warden who approved/rejected (for hostellers only)
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'hostel_warden_id' })
+  hostelWarden: User;
+
+  @Column({ nullable: true })
+  hostel_warden_id: number;
+
+  @Column('text', { nullable: true })
+  hostel_warden_comment: string;
 
   @CreateDateColumn()
   created_at: Date;

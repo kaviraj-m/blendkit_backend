@@ -10,6 +10,7 @@ import {
   UpdateGatePassStatusByHodDto,
   UpdateGatePassStatusByAcademicDirectorDto,
   UpdateGatePassBySecurityDto,
+  UpdateGatePassStatusByHostelWardenDto,
   GatePassFilterDto 
 } from './dto/gate-pass.dto';
 
@@ -140,7 +141,7 @@ export class GatePassService {
     // Find the gate pass
     const gatePass = await this.gatePassRepository.findOne({
       where: { id: gatePassId },
-      relations: ['student', 'student.department', 'department', 'staff']
+      relations: ['student', 'student.department', 'student.dayScholarHosteller', 'department', 'staff']
     });
     
     if (!gatePass) {
@@ -182,7 +183,19 @@ export class GatePassService {
     gatePass.hod_comment = updateDto.hod_comment || '';
     
     if (updateDto.status === 'approved_by_hod') {
-      gatePass.status = GatePassStatus.PENDING_ACADEMIC_DIRECTOR;
+      // Check if student is a hosteller or day scholar
+      // We need to get the DayScholarHosteller type
+      const dayScholarHostellerType = gatePass.student.dayScholarHosteller?.type?.toLowerCase() || '';
+      
+      if (dayScholarHostellerType === 'hosteller') {
+        // If hosteller, next approval is by hostel warden
+        gatePass.status = GatePassStatus.PENDING_HOSTEL_WARDEN;
+        this.logger.log(`Gate pass ${gatePassId} is for a hosteller, sending to hostel warden for approval`);
+      } else {
+        // If day scholar, next approval is by academic director
+        gatePass.status = GatePassStatus.PENDING_ACADEMIC_DIRECTOR;
+        this.logger.log(`Gate pass ${gatePassId} is for a day scholar, sending directly to academic director`);
+      }
     } else {
       gatePass.status = GatePassStatus.REJECTED_BY_HOD;
     }
@@ -442,6 +455,79 @@ export class GatePassService {
       relations: ['student', 'department', 'staff', 'hod', 'academicDirector'],
       order: {
         start_date: 'ASC'
+      }
+    });
+  }
+  
+  // Update gate pass status by Hostel Warden (for hostellers only)
+  async updateByHostelWarden(
+    gatePassId: number, 
+    hostelWardenId: number, 
+    updateDto: UpdateGatePassStatusByHostelWardenDto
+  ): Promise<GatePass> {
+    this.logger.log(`Updating gate pass ${gatePassId} by Hostel Warden ${hostelWardenId}`);
+    
+    // Find the gate pass
+    const gatePass = await this.gatePassRepository.findOne({
+      where: { id: gatePassId },
+      relations: ['student', 'student.department', 'student.dayScholarHosteller', 'department', 'staff', 'hod']
+    });
+    
+    if (!gatePass) {
+      throw new NotFoundException(`Gate pass with ID ${gatePassId} not found`);
+    }
+    
+    // Check if the gate pass is in the correct state
+    if (gatePass.status !== GatePassStatus.PENDING_HOSTEL_WARDEN) {
+      throw new BadRequestException(`Gate pass is not in pending Hostel Warden status. Current status: ${gatePass.status}`);
+    }
+    
+    // Find the Hostel Warden
+    const hostelWarden = await this.userRepository.findOne({ 
+      where: { id: hostelWardenId },
+      relations: ['role'] 
+    });
+    
+    if (!hostelWarden) {
+      throw new NotFoundException('Hostel Warden not found');
+    }
+    
+    // Verify role
+    const roleName = typeof hostelWarden.role === 'string' 
+      ? hostelWarden.role 
+      : (hostelWarden.role?.name || '');
+      
+    if (roleName !== 'hostel_warden') {
+      throw new ForbiddenException('Only Hostel Warden can approve at this stage');
+    }
+    
+    // Verify student is a hosteller
+    const dayScholarHostellerType = gatePass.student.dayScholarHosteller?.type?.toLowerCase() || '';
+    if (dayScholarHostellerType !== 'hosteller') {
+      throw new ForbiddenException('Hostel Warden can only approve gate passes for hostellers');
+    }
+    
+    // Update gate pass
+    gatePass.hostelWarden = hostelWarden;
+    gatePass.hostel_warden_id = hostelWarden.id;
+    gatePass.hostel_warden_comment = updateDto.hostel_warden_comment || '';
+    
+    if (updateDto.status === 'approved_by_hostel_warden') {
+      gatePass.status = GatePassStatus.PENDING_ACADEMIC_DIRECTOR;
+    } else {
+      gatePass.status = GatePassStatus.REJECTED_BY_HOSTEL_WARDEN;
+    }
+    
+    return this.gatePassRepository.save(gatePass);
+  }
+  
+  // Add a new method to get gate passes for Hostel Warden approval
+  async findForHostelWardenApproval(): Promise<GatePass[]> {
+    return this.gatePassRepository.find({
+      where: { status: GatePassStatus.PENDING_HOSTEL_WARDEN },
+      relations: ['student', 'student.department', 'student.dayScholarHosteller', 'department', 'staff', 'hod'],
+      order: {
+        updated_at: 'ASC'
       }
     });
   }

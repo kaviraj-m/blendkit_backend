@@ -63,6 +63,16 @@ export class UpdateGatePassBySecurityDto {
   security_comment?: string;
 }
 
+export class UpdateGatePassStatusByHostelWardenDto {
+  @IsString()
+  @IsNotEmpty()
+  status: 'approved_by_hostel_warden' | 'rejected_by_hostel_warden';
+
+  @IsString()
+  @IsOptional()
+  hostel_warden_comment?: string;
+}
+
 export class GatePassFilterDto {
   @IsString()
   @IsOptional()

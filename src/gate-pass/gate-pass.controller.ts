@@ -22,6 +22,7 @@ import {
   UpdateGatePassStatusByHodDto,
   UpdateGatePassStatusByAcademicDirectorDto,
   UpdateGatePassBySecurityDto,
+  UpdateGatePassStatusByHostelWardenDto,
   GatePassFilterDto 
 } from './dto/gate-pass.dto';
 
@@ -97,6 +98,14 @@ export class GatePassController {
   @Roles('security')
   async findForSecurityVerification() {
     return this.gatePassService.findForSecurityVerification();
+  }
+
+  // Get gate passes pending Hostel Warden approval
+  @Get('pending-hostel-warden-approval')
+  @Roles('hostel_warden')
+  async findPendingHostelWardenApproval() {
+    this.logger.log('Hostel Warden retrieving gate passes pending approval');
+    return this.gatePassService.findForHostelWardenApproval();
   }
 
   // Get a specific gate pass by ID
@@ -180,5 +189,18 @@ export class GatePassController {
     const securityId = req.user.id || req.user.userId;
     this.logger.log(`Security ${securityId} marking gate pass ${id} as used`);
     return this.gatePassService.updateBySecurity(id, securityId, updateDto);
+  }
+
+  // Update gate pass status by Hostel Warden
+  @Patch(':id/hostel-warden-approval')
+  @Roles('hostel_warden')
+  async updateByHostelWarden(
+    @Request() req,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateDto: UpdateGatePassStatusByHostelWardenDto
+  ) {
+    const hostelWardenId = req.user.id || req.user.userId;
+    this.logger.log(`Hostel Warden ${hostelWardenId} updating gate pass ${id} with status ${updateDto.status}`);
+    return this.gatePassService.updateByHostelWarden(id, hostelWardenId, updateDto);
   }
 } 

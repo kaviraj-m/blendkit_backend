@@ -42,6 +42,7 @@ export const seedUsers = async (dataSource: DataSource): Promise<void> => {
   const studentRole = roles.find(role => role.name === 'student');
   const staffRole = roles.find(role => role.name === 'staff');
   const hodRole = roles.find(role => role.name === 'hod');
+  const hostelWardenRole = roles.find(role => role.name === 'hostel_warden');
   const academicDirectorRole = roles.find(role => role.name === 'academic_director');
   const gymStaffRole = roles.find(role => role.name === 'gym_staff');
   const executiveDirectorRole = roles.find(role => role.name === 'executive_director');
@@ -63,12 +64,12 @@ export const seedUsers = async (dataSource: DataSource): Promise<void> => {
   
   // Check if required entities were found
   if (!studentRole || !staffRole || !gymStaffRole || !executiveDirectorRole || !adminRole || 
-      !hodRole || !academicDirectorRole || !securityRole ||
+      !hodRole || !hostelWardenRole || !academicDirectorRole || !securityRole ||
       !managementQuota || !itDepartment || !engineeringCollege || 
       !dayScholar || !hosteller) {
     console.log('Some required entities were not found:');
     console.log(`studentRole: ${studentRole?.id}, staffRole: ${staffRole?.id}, gymStaffRole: ${gymStaffRole?.id}`);
-    console.log(`hodRole: ${hodRole?.id}, academicDirectorRole: ${academicDirectorRole?.id}, securityRole: ${securityRole?.id}`);
+    console.log(`hodRole: ${hodRole?.id}, hostelWardenRole: ${hostelWardenRole?.id}, academicDirectorRole: ${academicDirectorRole?.id}, securityRole: ${securityRole?.id}`);
     console.log(`executiveDirectorRole: ${executiveDirectorRole?.id}, adminRole: ${adminRole?.id}`);
     console.log(`managementQuota: ${managementQuota?.id}, itDepartment: ${itDepartment?.id}, engineeringCollege: ${engineeringCollege?.id}`);
     console.log(`dayScholar: ${dayScholar?.id}, hosteller: ${hosteller?.id}`);
@@ -223,6 +224,22 @@ export const seedUsers = async (dataSource: DataSource): Promise<void> => {
       department_id: itDepartment.id,
       college_id: engineeringCollege.id,
       dayscholar_hosteller_id: hosteller.id
+    },
+    // Hostel Warden user
+    {
+      name: 'Hostel Warden',
+      email: 'warden@example.com',
+      password: commonPassword,
+      sin_number: 'WARDEN001',
+      father_name: 'Warden Father',
+      year: 0,
+      batch: 'WARDEN',
+      phone: '9876543213',
+      role_id: hostelWardenRole.id,
+      quota_id: managementQuota.id,
+      department_id: itDepartment.id,
+      college_id: engineeringCollege.id,
+      dayscholar_hosteller_id: dayScholar.id
     }
   ];
   

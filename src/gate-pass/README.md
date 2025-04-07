@@ -9,15 +9,18 @@ The Gate Pass system allows students to request permission to leave the college 
 1. Student submits gate pass request
 2. Staff of the student's department reviews and approves/rejects
 3. If approved, HOD (Head of Department) reviews and approves/rejects
-4. If approved, Academic Director (Principal) reviews and gives final approval/rejection
-5. If approved, Security can view and verify the gate pass when student leaves campus
+4. If approved and student is a **hosteller**, Hostel Warden reviews and approves/rejects
+   (Day scholars skip this step)
+5. If approved, Academic Director (Principal) reviews and gives final approval/rejection
+6. If approved, Security can view and verify the gate pass when student leaves campus
 
 ## Roles and Permissions
 
 - **Student**: Can create gate pass requests and view their own requests
 - **Staff**: Can view and approve/reject gate pass requests from students in their department
 - **HOD**: Can view and approve/reject gate pass requests that have been approved by staff in their department
-- **Academic Director (Principal)**: Can view and give final approval/rejection for gate pass requests from all departments that have been approved by their respective HODs
+- **Hostel Warden**: Can view and approve/reject gate pass requests for hosteller students that have been approved by their HOD
+- **Academic Director (Principal)**: Can view and give final approval/rejection for gate pass requests from all departments that have been approved by their respective HODs (for day scholars) or Hostel Wardens (for hostellers)
 - **Security**: Can view approved gate passes and mark them as used when students leave campus
 - **Admin**: Can view all gate passes in the system
 
@@ -28,6 +31,8 @@ The system follows a hierarchical structure:
 - Each department has a Head of Department (HOD)
 - Each department has staff members
 - Students belong to specific departments
+- Students are classified as either day scholars or hostellers
+- Hostellers are under the supervision of Hostel Wardens
 
 ## Gate Pass Status Flow
 
@@ -37,10 +42,12 @@ A gate pass request goes through the following statuses:
 2. `APPROVED_BY_STAFF` / `REJECTED_BY_STAFF` - After staff review
 3. `PENDING_HOD` - If approved by staff
 4. `APPROVED_BY_HOD` / `REJECTED_BY_HOD` - After HOD review
-5. `PENDING_ACADEMIC_DIRECTOR` - If approved by HOD
-6. `APPROVED` / `REJECTED_BY_ACADEMIC_DIRECTOR` - After Academic Director review
-7. `USED` - When Security marks the gate pass as used
-8. `EXPIRED` - When the end date has passed
+5. `PENDING_HOSTEL_WARDEN` - If approved by HOD (hostellers only)
+6. `APPROVED_BY_HOSTEL_WARDEN` / `REJECTED_BY_HOSTEL_WARDEN` - After Hostel Warden review (hostellers only)
+7. `PENDING_ACADEMIC_DIRECTOR` - If approved by HOD (day scholars) or Hostel Warden (hostellers)
+8. `APPROVED` / `REJECTED_BY_ACADEMIC_DIRECTOR` - After Academic Director review
+9. `USED` - When Security marks the gate pass as used
+10. `EXPIRED` - When the end date has passed
 
 ## API Endpoints
 
@@ -61,6 +68,12 @@ A gate pass request goes through the following statuses:
 - `GET /api/gate-passes/pending-hod-approval` - View gate passes pending HOD approval in their department
 - `PATCH /api/gate-passes/:id/hod-approval` - Approve or reject a gate pass
   - Body: `{ status: 'approved_by_hod' | 'rejected_by_hod', hod_comment }`
+
+### Hostel Warden Endpoints
+
+- `GET /api/gate-passes/pending-hostel-warden-approval` - View gate passes pending Hostel Warden approval
+- `PATCH /api/gate-passes/:id/hostel-warden-approval` - Approve or reject a gate pass
+  - Body: `{ status: 'approved_by_hostel_warden' | 'rejected_by_hostel_warden', hostel_warden_comment }`
 
 ### Academic Director (Principal) Endpoints
 
