@@ -175,6 +175,30 @@ export class UsersService {
     await this.redisService.del(`user:${id}`);
   }
 
+  async findAllStudents(): Promise<User[]> {
+    // Get the student role ID
+    const studentRole = await this.rolesRepository.findOne({ 
+      where: { name: 'student' }
+    });
+    
+    if (!studentRole) {
+      throw new NotFoundException('Student role not found');
+    }
+
+    // Find all users with the student role
+    const students = await this.usersRepository.find({
+      where: { role: { id: studentRole.id } },
+      relations: ['role', 'department', 'college', 'dayScholarHosteller'],
+      select: [
+        'id', 'sin_number', 'name', 'email', 'father_name', 
+        'year', 'batch', 'phone', 'created_at', 'updated_at',
+        'department_id', 'college_id', 'dayscholar_hosteller_id', 'role_id'
+      ]
+    });
+
+    return students.map(student => this.sanitizeUser(student));
+  }
+
   // Helper methods
   private sanitizeUser(user: User): User {
     const { password, ...sanitized } = user;

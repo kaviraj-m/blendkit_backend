@@ -24,6 +24,7 @@ export class AttendanceService {
     const attendance = new Attendance();
     attendance.user = user;
     attendance.isPresent = createAttendanceDto.isPresent ?? true;
+    attendance.checkInTime = createAttendanceDto.checkInTime ? new Date(createAttendanceDto.checkInTime) : new Date();
     
     if (createAttendanceDto.notes) {
       attendance.notes = createAttendanceDto.notes;

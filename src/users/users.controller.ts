@@ -26,7 +26,7 @@ export class UsersController {
 
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'staff')
+  @Roles('admin', 'staff', 'gym_staff')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get all users' })
   @ApiResponse({ status: 200, description: 'Return all users' })
@@ -90,5 +90,15 @@ export class UsersController {
   @ApiResponse({ status: 404, description: 'User not found' })
   remove(@Param('id') id: string) {
     return this.usersService.remove(+id);
+  }
+
+  @Get('students')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'gym_staff', 'academic_director', 'staff')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get all student users' })
+  @ApiResponse({ status: 200, description: 'Return all student users' })
+  findAllStudents() {
+    return this.usersService.findAllStudents();
   }
 }
