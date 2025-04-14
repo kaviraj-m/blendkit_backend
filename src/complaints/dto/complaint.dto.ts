@@ -17,5 +17,5 @@ export class UpdateComplaintStatusDto {
 
   @IsString()
   @IsOptional()
-  reply: string;
+  response: string;
 } 

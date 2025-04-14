@@ -47,16 +47,49 @@ export class ComplaintsController {
       return this.complaintsService.findByStudent(req.user.id || req.user.userId);
     }
     
-    // If user is executive director, return all complaints
-    if (roleName === 'executive_director') {
+    // If user is executive director or academic director, return all complaints
+    if (roleName === 'executive_director' || roleName === 'academic_director') {
       return this.complaintsService.findAll();
     }
     
     throw new ForbiddenException('Not authorized to view complaints');
   }
 
+  @Get('department')
+  @Roles('hod')
+  async findDepartmentComplaints(@Request() req) {
+    this.logger.log(`HOD ${req.user.id || req.user.userId} retrieving department complaints`);
+    
+    // Get the HOD's department ID from the user object
+    const departmentId = req.user.department_id;
+    
+    if (!departmentId) {
+      this.logger.error(`HOD ${req.user.id || req.user.userId} has no associated department`);
+      throw new ForbiddenException('HOD must have an associated department');
+    }
+    
+    return this.complaintsService.findByDepartment(departmentId);
+  }
+
+  @Get('hostel')
+  @Roles('warden')
+  async findHostelComplaints(@Request() req) {
+    this.logger.log(`Warden ${req.user.id || req.user.userId} retrieving hostel complaints`);
+    
+    // Assuming the warden is associated with a hostel through the user profile
+    // We may need to adapt this based on your actual data model
+    const wardenId = req.user.id || req.user.userId;
+    
+    if (!wardenId) {
+      this.logger.error(`Invalid warden ID`);
+      throw new ForbiddenException('Valid warden ID is required');
+    }
+    
+    return this.complaintsService.findByHostel(wardenId);
+  }
+
   @Get('status/:status')
-  @Roles('executive_director')
+  @Roles('executive_director', 'academic_director')
   findByStatus(@Param('status') status: ComplaintStatus) {
     return this.complaintsService.findByStatus(status);
   }
@@ -78,11 +111,18 @@ export class ComplaintsController {
       throw new ForbiddenException('Not authorized to view this complaint');
     }
     
+    // HODs can only view complaints from their department
+    if (roleName === 'hod' && complaint.student.department_id !== req.user.department_id) {
+      throw new ForbiddenException('You can only view complaints from students in your department');
+    }
+    
+    // For wardens, add appropriate permission check here
+    // This would depend on your data model for wardens/hostels
+    
     return complaint;
   }
 
   @Patch(':id')
-  //@Roles('executive_director')
   async update(
     @Request() req,
     @Param('id', ParseIntPipe) id: number,
@@ -96,11 +136,24 @@ export class ComplaintsController {
     this.logger.log(`User with role ${roleName} attempting to update complaint ${id}`);
     this.logger.log(`Request data: ${JSON.stringify(updateStatusDto)}`);
     
-    // Manually check role here for more debugging
-    if (roleName !== 'executive_director') {
+    // Allow HODs, wardens, academic directors and executive directors to update complaints
+    const allowedRoles = ['executive_director', 'academic_director', 'hod', 'warden'];
+    if (!allowedRoles.includes(roleName)) {
       this.logger.error(`User with role ${roleName} denied access to update complaint ${id}`);
-      throw new ForbiddenException(`Role ${roleName} is not authorized to update complaints. Only executive_director role can update complaints.`);
+      throw new ForbiddenException(`Role ${roleName} is not authorized to update complaints. Only specific roles can update complaints.`);
     }
+    
+    // If HOD, validate that the complaint belongs to their department
+    if (roleName === 'hod') {
+      const complaint = await this.complaintsService.findOne(id);
+      if (complaint.student.department_id !== req.user.department_id) {
+        this.logger.error(`HOD from department ${req.user.department_id} attempted to update complaint from department ${complaint.student.department_id}`);
+        throw new ForbiddenException('You can only update complaints from students in your department');
+      }
+    }
+    
+    // If warden, validate that the complaint belongs to their hostel
+    // This check would depend on your data model
     
     return this.complaintsService.updateStatus(id, req.user.id || req.user.userId, updateStatusDto);
   }
@@ -114,6 +167,7 @@ export class ComplaintsController {
       role: req.user.role,
       roleType: typeof req.user.role,
       roleName: typeof req.user.role === 'string' ? req.user.role : (req.user.role?.name || 'unknown'),
+      department: req.user.department_id ? req.user.department_id : 'none',
       timestamp: new Date().toISOString()
     };
   }

@@ -100,6 +100,22 @@ export class GatePassController {
     return this.gatePassService.findForSecurityVerification();
   }
 
+  // Get pending gate passes for security (status starting with 'pending', both uppercase and lowercase)
+  @Get('security-pending')
+  @Roles('security')
+  async findSecurityPending() {
+    this.logger.log('Security retrieving gate passes with pending status (both uppercase and lowercase)');
+    return this.gatePassService.findSecurityPending();
+  }
+
+  // Get used gate passes for security (already verified by security)
+  @Get('security-used')
+  @Roles('security')
+  async findSecurityUsed() {
+    this.logger.log('Security retrieving used gate passes');
+    return this.gatePassService.findSecurityUsed();
+  }
+
   // Get gate passes pending Hostel Warden approval
   @Get('pending-hostel-warden-approval')
   @Roles('hostel_warden')
@@ -187,8 +203,19 @@ export class GatePassController {
     @Body() updateDto: UpdateGatePassBySecurityDto
   ) {
     const securityId = req.user.id || req.user.userId;
-    this.logger.log(`Security ${securityId} marking gate pass ${id} as used`);
-    return this.gatePassService.updateBySecurity(id, securityId, updateDto);
+    this.logger.log(`Security ${securityId} marking gate pass ${id} as used, data: ${JSON.stringify(updateDto)}`);
+    try {
+      // Handle both formats of request body to make the API more flexible
+      const processedUpdateDto: UpdateGatePassBySecurityDto = {
+        status: 'used',
+        security_comment: updateDto.security_comment || ''
+      };
+      
+      return this.gatePassService.updateBySecurity(id, securityId, processedUpdateDto);
+    } catch (error) {
+      this.logger.error(`Error updating gate pass by security: ${error.message}`);
+      throw error;
+    }
   }
 
   // Update gate pass status by Hostel Warden

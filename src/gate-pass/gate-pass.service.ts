@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, FindOptionsWhere } from 'typeorm';
+import { Repository, Between, FindOptionsWhere, LessThan, MoreThan, Like, In } from 'typeorm';
 import { GatePass, GatePassStatus, GatePassType } from '../entities/gate-pass.entity';
 import { User } from '../entities/user.entity';
 import { Department } from '../entities/department.entity';
@@ -268,56 +268,82 @@ export class GatePassService {
     securityId: number, 
     updateDto: UpdateGatePassBySecurityDto
   ): Promise<GatePass> {
-    this.logger.log(`Updating gate pass ${gatePassId} by Security ${securityId}`);
+    this.logger.log(`Updating gate pass ${gatePassId} by Security ${securityId}, data: ${JSON.stringify(updateDto)}`);
     
-    // Find the gate pass
-    const gatePass = await this.gatePassRepository.findOne({
-      where: { id: gatePassId },
-      relations: ['student', 'department', 'staff', 'hod', 'academicDirector']
-    });
-    
-    if (!gatePass) {
-      throw new NotFoundException(`Gate pass with ID ${gatePassId} not found`);
-    }
-    
-    // Check if the gate pass is in the correct state (must be approved)
-    if (gatePass.status !== GatePassStatus.APPROVED) {
-      throw new BadRequestException(`Gate pass is not approved. Current status: ${gatePass.status}`);
-    }
-    
-    // Find the Security
-    const security = await this.userRepository.findOne({ 
-      where: { id: securityId },
-      relations: ['role'] 
-    });
-    
-    if (!security) {
-      throw new NotFoundException('Security not found');
-    }
-    
-    // Verify role
-    const roleName = typeof security.role === 'string' 
-      ? security.role 
-      : (security.role?.name || '');
+    try {
+      // Find the gate pass
+      const gatePass = await this.gatePassRepository.findOne({
+        where: { id: gatePassId },
+        relations: ['student', 'department', 'staff', 'hod', 'academicDirector']
+      });
       
-    if (roleName !== 'security') {
-      throw new ForbiddenException('Only Security can mark a gate pass as used');
+      if (!gatePass) {
+        throw new NotFoundException(`Gate pass with ID ${gatePassId} not found`);
+      }
+      
+      // Check if the gate pass is in the correct state (must be approved)
+      if (gatePass.status !== GatePassStatus.APPROVED) {
+        throw new BadRequestException(`Gate pass is not approved. Current status: ${gatePass.status}`);
+      }
+      
+      // Find the Security
+      const security = await this.userRepository.findOne({ 
+        where: { id: securityId },
+        relations: ['role'] 
+      });
+      
+      if (!security) {
+        throw new NotFoundException('Security not found');
+      }
+      
+      // Verify role
+      const roleName = typeof security.role === 'string' 
+        ? security.role 
+        : (security.role?.name || '');
+        
+      if (roleName !== 'security') {
+        throw new ForbiddenException('Only Security can mark a gate pass as used');
+      }
+      
+      // Check if within valid date range, with more flexibility
+      const currentDate = new Date();
+      const startDate = new Date(gatePass.start_date);
+      const endDate = new Date(gatePass.end_date);
+      
+      // Make the date check more lenient - allow checking out on the same day
+      // even if a few hours before official start time
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
+      
+      // Add a 24-hour buffer to both start and end dates
+      const bufferStartDate = new Date(startDate);
+      bufferStartDate.setDate(bufferStartDate.getDate() - 1);
+      
+      const bufferEndDate = new Date(endDate);
+      bufferEndDate.setDate(bufferEndDate.getDate() + 1);
+      
+      this.logger.log(`Gate pass valid period: ${bufferStartDate.toISOString()} to ${bufferEndDate.toISOString()}`);
+      this.logger.log(`Current date: ${currentDate.toISOString()}`);
+      
+      if (currentDate < bufferStartDate || currentDate > bufferEndDate) {
+        this.logger.warn(`Gate pass ${gatePassId} date range check failed: current date ${currentDate.toISOString()} outside of valid range`);
+        throw new BadRequestException('Gate pass is not valid for the current date');
+      }
+      
+      // Update gate pass
+      gatePass.security = security;
+      gatePass.security_id = security.id;
+      gatePass.security_comment = updateDto.security_comment || '';
+      gatePass.status = GatePassStatus.USED;
+      gatePass.checkout_time = currentDate;
+      
+      const savedGatePass = await this.gatePassRepository.save(gatePass);
+      this.logger.log(`Gate pass ${gatePassId} successfully marked as used`);
+      return savedGatePass;
+    } catch (error) {
+      this.logger.error(`Error in updateBySecurity: ${error.message}`);
+      throw error;
     }
-    
-    // Check if within valid date range
-    const currentDate = new Date();
-    if (currentDate < gatePass.start_date || currentDate > gatePass.end_date) {
-      throw new BadRequestException('Gate pass is not valid for the current date');
-    }
-    
-    // Update gate pass
-    gatePass.security = security;
-    gatePass.security_id = security.id;
-    gatePass.security_comment = updateDto.security_comment || '';
-    gatePass.status = GatePassStatus.USED;
-    gatePass.checkout_time = currentDate;
-    
-    return this.gatePassRepository.save(gatePass);
   }
   
   // Get gate pass by ID
@@ -441,22 +467,125 @@ export class GatePassService {
   
   // Get gate passes for Security verification
   async findForSecurityVerification(): Promise<GatePass[]> {
-    // Current date for checking active gate passes
+    this.logger.log('Finding gate passes for security verification');
+    
+    // Current date
     const currentDate = new Date();
     
-    return this.gatePassRepository.find({
-      where: {
-        status: GatePassStatus.APPROVED,
-        start_date: Between(
-          new Date(currentDate.setHours(0, 0, 0, 0)), // Beginning of current day
-          new Date(currentDate.setHours(23, 59, 59, 999)) // End of current day
-        ),
-      },
-      relations: ['student', 'department', 'staff', 'hod', 'academicDirector'],
-      order: {
-        start_date: 'ASC'
-      }
-    });
+    try {
+      // Calculate yesterday, today and tomorrow to ensure a wider window for gate passes
+      const yesterday = new Date(currentDate);
+      yesterday.setDate(currentDate.getDate() - 1);
+      yesterday.setHours(0, 0, 0, 0);
+      
+      const tomorrow = new Date(currentDate);
+      tomorrow.setDate(currentDate.getDate() + 1);
+      tomorrow.setHours(23, 59, 59, 999);
+      
+      this.logger.log(`Fetching approved gate passes from ${yesterday.toISOString()} to ${tomorrow.toISOString()}`);
+      
+      // Find all approved passes that are valid within the next 24 hours
+      const gatePasses = await this.gatePassRepository.find({
+        where: [
+          {
+            status: GatePassStatus.APPROVED,
+            start_date: Between(yesterday, tomorrow)
+          },
+          {
+            status: GatePassStatus.APPROVED,
+            end_date: Between(yesterday, tomorrow)
+          },
+          {
+            status: GatePassStatus.APPROVED,
+            start_date: LessThan(yesterday),
+            end_date: MoreThan(tomorrow)
+          }
+        ],
+        relations: ['student', 'department', 'staff', 'hod', 'academicDirector'],
+        order: {
+          start_date: 'ASC'
+        }
+      });
+      
+      this.logger.log(`Found ${gatePasses.length} gate passes for security verification`);
+      return gatePasses;
+    } catch (error) {
+      this.logger.error(`Error fetching gate passes for security: ${error.message}`);
+      // Return empty array instead of throwing to avoid breaking the frontend
+      return [];
+    }
+  }
+  
+  // Get pending gate passes for security (approved but not used)
+  async findSecurityPending(): Promise<GatePass[]> {
+    this.logger.log('Finding pending gate passes for security');
+    
+    try {
+      // Define an array of all pending statuses with both upper and lowercase
+      const pendingStatuses = [
+        GatePassStatus.PENDING_STAFF,
+        GatePassStatus.PENDING_HOD,
+        GatePassStatus.PENDING_ACADEMIC_DIRECTOR,
+        GatePassStatus.PENDING_HOSTEL_WARDEN,
+        // Add lowercase versions if needed
+        'pending_staff',
+        'pending_hod',
+        'pending_academic_director',
+        'pending_hostel_warden'
+      ];
+      
+      this.logger.log(`Searching for gate passes with status in: ${pendingStatuses.join(', ')}`);
+      
+      // Query directly using IN operator with both enum values and lowercase strings
+      const gatePasses = await this.gatePassRepository.find({
+        where: {
+          status: In(pendingStatuses)
+        },
+        relations: ['student', 'department', 'staff', 'hod', 'academicDirector'],
+        order: {
+          start_date: 'ASC'
+        }
+      });
+      
+      this.logger.log(`Found ${gatePasses.length} pending gate passes for security`);
+      return gatePasses;
+    } catch (error) {
+      this.logger.error(`Error fetching pending gate passes for security: ${error.message}`);
+      // Return empty array instead of throwing to avoid breaking the frontend
+      return [];
+    }
+  }
+  
+  // Get used gate passes for security (already verified)
+  async findSecurityUsed(): Promise<GatePass[]> {
+    this.logger.log('Finding used gate passes for security');
+    
+    // Get current date
+    const currentDate = new Date();
+    // Calculate date 7 days ago
+    const sevenDaysAgo = new Date(currentDate);
+    sevenDaysAgo.setDate(currentDate.getDate() - 7);
+    
+    try {
+      // Find all used passes from the last 7 days
+      const gatePasses = await this.gatePassRepository.find({
+        where: {
+          status: GatePassStatus.USED,
+          updated_at: Between(sevenDaysAgo, currentDate)
+        },
+        relations: ['student', 'department', 'staff', 'hod', 'academicDirector', 'security'],
+        order: {
+          updated_at: 'DESC'
+        }
+      });
+      
+      this.logger.log(`Found ${gatePasses.length} used gate passes for security from the last 7 days`);
+      return gatePasses;
+    } catch (error) {
+      this.logger.error(`Error fetching used gate passes for security: ${error.message}`);
+      // Return empty array instead of throwing to avoid breaking the frontend
+      return [];
+    }
   }
   
   // Update gate pass status by Hostel Warden (for hostellers only)

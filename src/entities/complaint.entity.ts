@@ -31,7 +31,7 @@ export class Complaint {
   status: ComplaintStatus;
 
   @Column({ nullable: true })
-  reply: string;
+  response: string;
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'director_id' })

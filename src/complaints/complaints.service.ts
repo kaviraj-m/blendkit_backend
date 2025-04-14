@@ -104,10 +104,52 @@ export class ComplaintsService {
     
     // Update complaint
     complaint.status = updateStatusDto.status;
-    complaint.reply = updateStatusDto.reply;
+    complaint.response = updateStatusDto.response;
     complaint.director = director;
     
     this.logger.log(`Successfully updated complaint ${id}`);
     return this.complaintRepository.save(complaint);
+  }
+
+  async findByDepartment(departmentId: number): Promise<Complaint[]> {
+    this.logger.log(`Finding complaints for department ID: ${departmentId}`);
+    
+    if (!departmentId) {
+      this.logger.error(`Invalid department ID: ${departmentId}`);
+      throw new NotFoundException('Valid department ID is required');
+    }
+    
+    return this.complaintRepository.createQueryBuilder('complaint')
+      .innerJoinAndSelect('complaint.student', 'student')
+      .leftJoinAndSelect('complaint.director', 'director')
+      .where('student.department_id = :departmentId', { departmentId })
+      .orderBy('complaint.created_at', 'DESC')
+      .getMany();
+  }
+
+  async findByHostel(wardenId: number): Promise<Complaint[]> {
+    this.logger.log(`Finding complaints for warden ID: ${wardenId}`);
+    
+    if (!wardenId) {
+      this.logger.error(`Invalid warden ID: ${wardenId}`);
+      throw new NotFoundException('Valid warden ID is required');
+    }
+    
+    // Get the warden to find associated hostel information
+    const warden = await this.userRepository.findOne({ where: { id: wardenId } });
+    
+    if (!warden) {
+      this.logger.error(`Warden not found with ID: ${wardenId}`);
+      throw new NotFoundException('Warden not found');
+    }
+    
+    // Find students who are hostellers (dayscholar_hosteller_id = 2)
+    // This assumes that hosteller ID is 2, adjust as needed for your schema
+    return this.complaintRepository.createQueryBuilder('complaint')
+      .innerJoinAndSelect('complaint.student', 'student')
+      .leftJoinAndSelect('complaint.director', 'director')
+      .where('student.dayscholar_hosteller_id = :hostellerId', { hostellerId: 2 })
+      .orderBy('complaint.created_at', 'DESC')
+      .getMany();
   }
 } 

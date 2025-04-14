@@ -93,6 +93,44 @@ A gate pass request goes through the following statuses:
 - `GET /api/gate-passes` - Admin only: View all gate passes with filtering options
   - Query parameters: `status`, `student_id`, `department_id`, `start_date`, `end_date`
 
+## Security API Endpoints
+
+### Get Gate Passes for Security Verification
+```
+GET /api/gate-passes/for-security-verification
+```
+Returns gate passes that are approved and need verification by security personnel.
+
+**Role Required:** `security`
+
+**Success Response:**
+- Status: 200 OK
+- Content: Array of `GatePass` objects with relations to student, department and other entities
+
+### Get Pending Gate Passes for Security
+```
+GET /api/gate-passes/security-pending
+```
+Returns all gate passes that have a status starting with 'pending' (case insensitive). This includes statuses like PENDING_STAFF, PENDING_HOD, PENDING_ACADEMIC_DIRECTOR, and PENDING_HOSTEL_WARDEN.
+
+**Role Required:** `security`
+
+**Success Response:**
+- Status: 200 OK
+- Content: Array of `GatePass` objects with status starting with "pending"
+
+### Get Used Gate Passes for Security
+```
+GET /api/gate-passes/security-used
+```
+Returns all gate passes that have been used (verified by security) within the last 7 days.
+
+**Role Required:** `security`
+
+**Success Response:**
+- Status: 200 OK
+- Content: Array of `GatePass` objects with status "USED" and updated within the last 7 days
+
 ## Usage Examples
 
 ### Creating a Gate Pass (Student)
