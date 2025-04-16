@@ -22,6 +22,7 @@ import { GymSchedule } from './entities/gym-schedule.entity';
 import { Complaint } from './entities/complaint.entity';
 import { ComplaintsModule } from './complaints/complaints.module';
 import { GatePassModule } from './gate-pass/gate-pass.module';
+import { EmailModule } from './email/email.module';
 import { 
   Role, 
   College, 
@@ -82,6 +83,7 @@ import { SeedModule } from './database/seeds/seed.module';
     SeedModule,
     ComplaintsModule,
     GatePassModule,
+    EmailModule,
   ],
   controllers: [
     AppController

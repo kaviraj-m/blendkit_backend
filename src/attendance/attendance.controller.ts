@@ -87,4 +87,41 @@ export class AttendanceController {
   findByUser(@Param('userId') userId: string) {
     return this.attendanceService.findByUser(+userId);
   }
+
+  @Get('statistics')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('gym_staff')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get attendance statistics' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Return attendance statistics' })
+  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Unauthorized' })
+  getStatistics(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.attendanceService.getStatistics(startDate, endDate);
+  }
+
+  @Get('today')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('gym_staff')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get attendance records for today' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Return today\'s attendance records' })
+  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Unauthorized' })
+  getTodayAttendance() {
+    const today = new Date().toISOString().split('T')[0];
+    return this.attendanceService.findAll(undefined, today);
+  }
+
+  @Get('current')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('gym_staff')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get attendance records for users currently in the gym' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Return current attendance records' })
+  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Unauthorized' })
+  getCurrentAttendance() {
+    return this.attendanceService.findAll(undefined, undefined, true);
+  }
 } 

@@ -30,6 +30,18 @@ export class AttendanceService {
       attendance.notes = createAttendanceDto.notes;
     }
     
+    if (createAttendanceDto.workoutType) {
+      attendance.workoutType = createAttendanceDto.workoutType;
+    }
+    
+    if (createAttendanceDto.plannedDuration) {
+      attendance.plannedDuration = createAttendanceDto.plannedDuration;
+    }
+    
+    if (createAttendanceDto.isFirstVisit !== undefined) {
+      attendance.isFirstVisit = createAttendanceDto.isFirstVisit;
+    }
+    
     return this.attendanceRepository.save(attendance);
   }
 
@@ -79,6 +91,11 @@ export class AttendanceService {
     
     if (updateAttendanceDto.checkOutTime) {
       attendance.checkOutTime = new Date(updateAttendanceDto.checkOutTime);
+      
+      if (attendance.checkInTime) {
+        const durationMs = attendance.checkOutTime.getTime() - attendance.checkInTime.getTime();
+        attendance.actualDuration = Math.round(durationMs / (1000 * 60));
+      }
     }
     
     if (updateAttendanceDto.isPresent !== undefined) {
@@ -87,6 +104,26 @@ export class AttendanceService {
     
     if (updateAttendanceDto.notes) {
       attendance.notes = updateAttendanceDto.notes;
+    }
+    
+    if (updateAttendanceDto.workoutType) {
+      attendance.workoutType = updateAttendanceDto.workoutType;
+    }
+    
+    if (updateAttendanceDto.actualDuration) {
+      attendance.actualDuration = updateAttendanceDto.actualDuration;
+    }
+    
+    if (updateAttendanceDto.completionStatus) {
+      attendance.completionStatus = updateAttendanceDto.completionStatus;
+    }
+    
+    if (updateAttendanceDto.staffObservations) {
+      attendance.staffObservations = updateAttendanceDto.staffObservations;
+    }
+    
+    if (updateAttendanceDto.workoutIntensity) {
+      attendance.workoutIntensity = updateAttendanceDto.workoutIntensity;
     }
 
     return this.attendanceRepository.save(attendance);
@@ -107,5 +144,64 @@ export class AttendanceService {
       where: { user: { id: userId } },
       order: { checkInTime: 'DESC' },
     });
+  }
+
+  async getStatistics(startDate?: string, endDate?: string): Promise<any> {
+    const query = this.attendanceRepository.createQueryBuilder('attendance')
+      .leftJoinAndSelect('attendance.user', 'user');
+    
+    if (startDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      query.andWhere('attendance.checkInTime >= :start', { start });
+    }
+    
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      query.andWhere('attendance.checkInTime <= :end', { end });
+    }
+    
+    const records = await query.getMany();
+    
+    const totalVisits = records.length;
+    const uniqueUsers = new Set(records.map(r => r.user.id)).size;
+    
+    const recordsWithDuration = records.filter(r => r.actualDuration);
+    const averageDuration = recordsWithDuration.length > 0 
+      ? recordsWithDuration.reduce((sum, r) => sum + r.actualDuration, 0) / recordsWithDuration.length 
+      : 0;
+    
+    const workoutTypes = records
+      .filter(r => r.workoutType)
+      .reduce((acc, r) => {
+        acc[r.workoutType] = (acc[r.workoutType] || 0) + 1;
+        return acc;
+      }, {});
+    
+    const hourCounts = {};
+    records.forEach(r => {
+      const hour = new Date(r.checkInTime).getHours();
+      hourCounts[hour] = (hourCounts[hour] || 0) + 1;
+    });
+    
+    let peakHour = 0;
+    let peakCount = 0;
+    Object.entries(hourCounts).forEach(([hour, count]) => {
+      const countValue = count as number;
+      if (countValue > peakCount) {
+        peakHour = parseInt(hour);
+        peakCount = countValue;
+      }
+    });
+    
+    return {
+      totalVisits,
+      uniqueUsers,
+      averageDuration,
+      workoutTypes,
+      peakHour,
+      hourDistribution: hourCounts
+    };
   }
 } 

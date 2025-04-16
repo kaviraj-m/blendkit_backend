@@ -1,29 +1,82 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { User } from './user.entity';
+import { WorkoutType } from '../attendance/dto/create-attendance.dto';
+import { WorkoutCompletionStatus } from '../attendance/dto/update-attendance.dto';
 
 @Entity('attendances')
 export class Attendance {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => User, (user) => user.attendances)
+  @ManyToOne(() => User, { eager: true })
   user: User;
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @Column({ name: 'is_present', default: true })
+  isPresent: boolean;
+
+  @Column({ name: 'check_in', type: 'timestamp' })
   checkInTime: Date;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ name: 'check_out', type: 'timestamp', nullable: true })
   checkOutTime: Date;
-
-  @Column({ default: true })
-  isPresent: boolean;
 
   @Column({ nullable: true })
   notes: string;
+  
+  @Column({ 
+    name: 'workout_type',
+    type: 'enum', 
+    enum: WorkoutType, 
+    nullable: true 
+  })
+  workoutType: WorkoutType;
+  
+  @Column({ 
+    name: 'planned_duration',
+    type: 'int', 
+    nullable: true 
+  })
+  plannedDuration: number;
+  
+  @Column({ 
+    name: 'actual_duration',
+    type: 'int', 
+    nullable: true 
+  })
+  actualDuration: number;
+  
+  @Column({ 
+    name: 'is_first_visit',
+    type: 'boolean', 
+    default: false 
+  })
+  isFirstVisit: boolean;
+  
+  @Column({ 
+    name: 'completion_status',
+    type: 'enum', 
+    enum: WorkoutCompletionStatus, 
+    nullable: true 
+  })
+  completionStatus: WorkoutCompletionStatus;
+  
+  @Column({ 
+    name: 'staff_observations',
+    type: 'text', 
+    nullable: true 
+  })
+  staffObservations: string;
+  
+  @Column({ 
+    name: 'workout_intensity',
+    type: 'int', 
+    nullable: true 
+  })
+  workoutIntensity: number;
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
+  @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 } 

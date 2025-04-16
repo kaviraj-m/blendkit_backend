@@ -4,6 +4,7 @@ import { Repository, Between, FindOptionsWhere, LessThan, MoreThan, Like, In } f
 import { GatePass, GatePassStatus, GatePassType } from '../entities/gate-pass.entity';
 import { User } from '../entities/user.entity';
 import { Department } from '../entities/department.entity';
+import { EmailService } from '../email/email.service';
 import { 
   CreateGatePassDto, 
   UpdateGatePassStatusByStaffDto, 
@@ -25,6 +26,7 @@ export class GatePassService {
     private userRepository: Repository<User>,
     @InjectRepository(Department)
     private departmentRepository: Repository<Department>,
+    private emailService: EmailService
   ) {}
 
   // Create a new gate pass request
@@ -74,7 +76,30 @@ export class GatePassService {
       throw new BadRequestException('Start date cannot be in the past');
     }
 
-    return this.gatePassRepository.save(gatePass);
+    // Save the gate pass
+    const savedGatePass = await this.gatePassRepository.save(gatePass);
+    
+    // Find staff members in the same department to notify
+    try {
+      const staffMembers = await this.userRepository.find({
+        where: {
+          department_id: student.department_id,
+          role: { name: 'staff' }
+        },
+        relations: ['role']
+      });
+      
+      if (staffMembers && staffMembers.length > 0) {
+        // Send email notification to the first staff member (or you could loop through all)
+        await this.emailService.sendGatePassStaffNotification(savedGatePass, staffMembers[0]);
+        this.logger.log(`Sent email notification to staff ${staffMembers[0].id} for new gate pass ${savedGatePass.id}`);
+      }
+    } catch (error) {
+      // Just log the error but don't fail the request if email sending fails
+      this.logger.error(`Failed to send staff notification for new gate pass: ${error.message}`);
+    }
+    
+    return savedGatePass;
   }
 
   // Update gate pass status by staff
@@ -127,6 +152,21 @@ export class GatePassService {
     
     if (updateDto.status === 'approved_by_staff') {
       gatePass.status = GatePassStatus.PENDING_HOD;
+      
+      // Find the HOD for this department to send email notification
+      const hod = await this.userRepository.findOne({
+        where: {
+          department_id: gatePass.department_id,
+          role: { name: 'hod' }
+        },
+        relations: ['role']
+      });
+      
+      if (hod) {
+        // Send email notification to HOD
+        await this.emailService.sendGatePassHodNotification(gatePass, hod);
+        this.logger.log(`Sent email notification to HOD ${hod.id} for gate pass ${gatePassId}`);
+      }
     } else {
       gatePass.status = GatePassStatus.REJECTED_BY_STAFF;
     }
@@ -191,13 +231,43 @@ export class GatePassService {
         // If hosteller, next approval is by hostel warden
         gatePass.status = GatePassStatus.PENDING_HOSTEL_WARDEN;
         this.logger.log(`Gate pass ${gatePassId} is for a hosteller, sending to hostel warden for approval`);
+        
+        // Find hostel warden to send email
+        const hostelWarden = await this.userRepository.findOne({
+          where: { role: { name: 'hostel_warden' } },
+          relations: ['role']
+        });
+        
+        if (hostelWarden) {
+          // Send email notification to Hostel Warden
+          await this.emailService.sendGatePassHostelWardenNotification(gatePass, hostelWarden);
+          this.logger.log(`Sent email notification to Hostel Warden ${hostelWarden.id} for gate pass ${gatePassId}`);
+        }
       } else {
         // If day scholar, next approval is by academic director
         gatePass.status = GatePassStatus.PENDING_ACADEMIC_DIRECTOR;
         this.logger.log(`Gate pass ${gatePassId} is for a day scholar, sending directly to academic director`);
+        
+        // Find academic director to send email
+        const academicDirector = await this.userRepository.findOne({
+          where: { role: { name: 'academic_director' } },
+          relations: ['role']
+        });
+        
+        if (academicDirector) {
+          // Send email notification to Academic Director
+          await this.emailService.sendGatePassAcademicDirectorNotification(gatePass, academicDirector);
+          this.logger.log(`Sent email notification to Academic Director ${academicDirector.id} for gate pass ${gatePassId}`);
+        }
       }
     } else {
       gatePass.status = GatePassStatus.REJECTED_BY_HOD;
+      
+      // Send rejection notification to student
+      if (gatePass.student && gatePass.student.email) {
+        await this.emailService.sendGatePassStudentNotification(gatePass, gatePass.student);
+        this.logger.log(`Sent rejection notification to student ${gatePass.student.id} for gate pass ${gatePassId}`);
+      }
     }
     
     return this.gatePassRepository.save(gatePass);
@@ -245,9 +315,6 @@ export class GatePassService {
       throw new ForbiddenException('Only Academic Director can approve at this stage');
     }
     
-    // Academic Director (Principal) can approve gate passes from any department
-    // No need to check department as they oversee the entire college
-    
     // Update gate pass
     gatePass.academicDirector = academicDirector;
     gatePass.academic_director_id = academicDirector.id;
@@ -255,8 +322,20 @@ export class GatePassService {
     
     if (updateDto.status === 'approved') {
       gatePass.status = GatePassStatus.APPROVED;
+      
+      // Send notification email to student
+      if (gatePass.student && gatePass.student.email) {
+        await this.emailService.sendGatePassStudentNotification(gatePass, gatePass.student);
+        this.logger.log(`Sent approval notification to student ${gatePass.student.id} for gate pass ${gatePassId}`);
+      }
     } else {
       gatePass.status = GatePassStatus.REJECTED_BY_ACADEMIC_DIRECTOR;
+      
+      // Send rejection notification email to student
+      if (gatePass.student && gatePass.student.email) {
+        await this.emailService.sendGatePassStudentNotification(gatePass, gatePass.student);
+        this.logger.log(`Sent rejection notification to student ${gatePass.student.id} for gate pass ${gatePassId}`);
+      }
     }
     
     return this.gatePassRepository.save(gatePass);
@@ -588,7 +667,7 @@ export class GatePassService {
     }
   }
   
-  // Update gate pass status by Hostel Warden (for hostellers only)
+  // Update gate pass status by Hostel Warden
   async updateByHostelWarden(
     gatePassId: number, 
     hostelWardenId: number, 
@@ -599,7 +678,7 @@ export class GatePassService {
     // Find the gate pass
     const gatePass = await this.gatePassRepository.findOne({
       where: { id: gatePassId },
-      relations: ['student', 'student.department', 'student.dayScholarHosteller', 'department', 'staff', 'hod']
+      relations: ['student', 'student.department', 'department', 'staff', 'hod']
     });
     
     if (!gatePass) {
@@ -630,12 +709,6 @@ export class GatePassService {
       throw new ForbiddenException('Only Hostel Warden can approve at this stage');
     }
     
-    // Verify student is a hosteller
-    const dayScholarHostellerType = gatePass.student.dayScholarHosteller?.type?.toLowerCase() || '';
-    if (dayScholarHostellerType !== 'hosteller') {
-      throw new ForbiddenException('Hostel Warden can only approve gate passes for hostellers');
-    }
-    
     // Update gate pass
     gatePass.hostelWarden = hostelWarden;
     gatePass.hostel_warden_id = hostelWarden.id;
@@ -643,8 +716,26 @@ export class GatePassService {
     
     if (updateDto.status === 'approved_by_hostel_warden') {
       gatePass.status = GatePassStatus.PENDING_ACADEMIC_DIRECTOR;
+      
+      // Find academic director to send email notification
+      const academicDirector = await this.userRepository.findOne({
+        where: { role: { name: 'academic_director' } },
+        relations: ['role']
+      });
+      
+      if (academicDirector) {
+        // Send email notification to Academic Director
+        await this.emailService.sendGatePassAcademicDirectorNotification(gatePass, academicDirector);
+        this.logger.log(`Sent email notification to Academic Director ${academicDirector.id} for gate pass ${gatePassId}`);
+      }
     } else {
       gatePass.status = GatePassStatus.REJECTED_BY_HOSTEL_WARDEN;
+      
+      // Send rejection notification to student
+      if (gatePass.student && gatePass.student.email) {
+        await this.emailService.sendGatePassStudentNotification(gatePass, gatePass.student);
+        this.logger.log(`Sent rejection notification to student ${gatePass.student.id} for gate pass ${gatePassId}`);
+      }
     }
     
     return this.gatePassRepository.save(gatePass);
