@@ -14,6 +14,7 @@ import { AttendanceModule } from './attendance/attendance.module';
 import { GymPostsModule } from './gym-posts/gym-posts.module';
 import { GymScheduleModule } from './gym-schedule/gym-schedule.module';
 import { GymModule } from './gym/gym.module';
+import { SocialModule } from './social/social.module';
 import { DiscoveryModule, DiscoveryService } from '@nestjs/core';
 import { Equipment } from './entities/equipment.entity';
 import { User } from './entities/user.entity';
@@ -29,7 +30,10 @@ import {
   Department, 
   DayScholarHosteller, 
   Quota, 
-  GatePass
+  GatePass,
+  SocialPost,
+  Comment,
+  Endorsement
 } from './entities';
 import { SeedModule } from './database/seeds/seed.module';
 
@@ -70,7 +74,10 @@ import { SeedModule } from './database/seeds/seed.module';
       GymPost,
       GymSchedule,
       Complaint,
-      GatePass
+      GatePass,
+      SocialPost,
+      Comment,
+      Endorsement
     ]),
     RedisModule,
     UsersModule,
@@ -84,6 +91,7 @@ import { SeedModule } from './database/seeds/seed.module';
     ComplaintsModule,
     GatePassModule,
     EmailModule,
+    SocialModule,
   ],
   controllers: [
     AppController
