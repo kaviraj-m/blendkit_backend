@@ -15,6 +15,7 @@ import { GymPostsModule } from './gym-posts/gym-posts.module';
 import { GymScheduleModule } from './gym-schedule/gym-schedule.module';
 import { GymModule } from './gym/gym.module';
 import { SocialModule } from './social/social.module';
+import { MediaModule } from './media/media.module';
 import { DiscoveryModule, DiscoveryService } from '@nestjs/core';
 import { Equipment } from './entities/equipment.entity';
 import { User } from './entities/user.entity';
@@ -92,6 +93,7 @@ import { SeedModule } from './database/seeds/seed.module';
     GatePassModule,
     EmailModule,
     SocialModule,
+    MediaModule,
   ],
   controllers: [
     AppController

@@ -7,6 +7,7 @@ import { EndorsementsService } from './endorsements.service';
 import { CommentsController } from './comments.controller';
 import { CommentsService } from './comments.service';
 import { SocialPost, User, Comment, Endorsement, Role } from '../entities';
+import { MediaModule } from '../media/media.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { SocialPost, User, Comment, Endorsement, Role } from '../entities';
       Endorsement,
       Role
     ]),
+    MediaModule,
   ],
   controllers: [
     SocialPostsController,

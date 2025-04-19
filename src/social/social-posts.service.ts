@@ -4,6 +4,8 @@ import { Repository } from 'typeorm';
 import { SocialPost, User, Comment, Endorsement } from '../entities';
 import { CreateSocialPostDto, UpdateSocialPostDto } from './dto';
 import { Role } from '../entities/role.entity';
+import { MediaService } from '../media/media.service';
+import { UploadResponseDto } from '../media/dto/upload-response.dto';
 
 @Injectable()
 export class SocialPostsService {
@@ -20,6 +22,7 @@ export class SocialPostsService {
     private endorsementRepository: Repository<Endorsement>,
     @InjectRepository(Role)
     private roleRepository: Repository<Role>,
+    private mediaService: MediaService,
   ) {}
 
   async create(createSocialPostDto: CreateSocialPostDto, userId: number): Promise<SocialPost> {
@@ -34,6 +37,39 @@ export class SocialPostsService {
     });
 
     return this.socialPostRepository.save(post);
+  }
+
+  async uploadMediaForPost(
+    postId: number, 
+    file: Express.Multer.File,
+    userId: number
+  ): Promise<{ post: SocialPost, media: UploadResponseDto }> {
+    // Find the post first
+    const post = await this.findOne(postId);
+    
+    // Check if user is the post owner
+    if (post.createdBy.id !== userId) {
+      throw new NotFoundException('Not authorized to upload media for this post');
+    }
+    
+    // Upload the file to Cloudinary
+    const mediaUpload = await this.mediaService.uploadFile(file, 'social-posts');
+    
+    // Update the post mediaUrls array
+    const mediaUrl = mediaUpload.secure_url;
+    if (!post.mediaUrls) {
+      post.mediaUrls = [mediaUrl];
+    } else {
+      post.mediaUrls.push(mediaUrl);
+    }
+    
+    // Save the updated post
+    const updatedPost = await this.socialPostRepository.save(post);
+    
+    return {
+      post: updatedPost,
+      media: mediaUpload
+    };
   }
 
   async findAll(

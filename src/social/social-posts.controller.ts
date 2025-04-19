@@ -1,12 +1,15 @@
 import { 
   Controller, Get, Post, Body, Patch, Param, Delete, 
-  UseGuards, HttpStatus, Query, Req, Logger, ParseIntPipe
+  UseGuards, HttpStatus, Query, Req, Logger, ParseIntPipe,
+  UploadedFile, UseInterceptors
 } from '@nestjs/common';
 import { SocialPostsService } from './social-posts.service';
 import { CreateSocialPostDto, UpdateSocialPostDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { Request } from 'express';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { UploadResponseDto } from '../media/dto/upload-response.dto';
 
 // Define the User interface for the Request
 interface RequestWithUser extends Request {
@@ -34,6 +37,38 @@ export class SocialPostsController {
   create(@Body() createSocialPostDto: CreateSocialPostDto, @Req() req: RequestWithUser) {
     this.logger.log(`Creating new social post: ${JSON.stringify(createSocialPostDto)}`);
     return this.socialPostsService.create(createSocialPostDto, req.user.userId);
+  }
+
+  @Post(':id/upload-media')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Upload media for a social post' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  @ApiResponse({ 
+    status: HttpStatus.CREATED, 
+    description: 'Media uploaded successfully' 
+  })
+  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Unauthorized' })
+  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Forbidden - not post owner' })
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadMedia(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: RequestWithUser
+  ) {
+    this.logger.log(`Uploading media for post ID ${id}`);
+    return this.socialPostsService.uploadMediaForPost(id, file, req.user.userId);
   }
 
   @Get()
