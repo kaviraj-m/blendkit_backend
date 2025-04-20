@@ -9,6 +9,9 @@ export class DayScholarHosteller {
   @Column({ unique: true, length: 50 })
   type: string;
 
+  @Column({ nullable: true, length: 20 })
+  parent_number: string;
+
   @CreateDateColumn()
   created_at: Date;
 

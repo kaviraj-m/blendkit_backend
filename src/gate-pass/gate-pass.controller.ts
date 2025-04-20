@@ -18,6 +18,8 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { 
   CreateGatePassDto, 
+  CreateStaffGatePassDto,
+  CreateHodGatePassDto,
   UpdateGatePassStatusByStaffDto, 
   UpdateGatePassStatusByHodDto,
   UpdateGatePassStatusByAcademicDirectorDto,
@@ -41,6 +43,22 @@ export class GatePassController {
     return this.gatePassService.create(req.user.id || req.user.userId, createGatePassDto);
   }
 
+  // Create a new gate pass request (staff only)
+  @Post('staff')
+  @Roles('staff')
+  createStaffGatePass(@Request() req, @Body() createGatePassDto: CreateStaffGatePassDto) {
+    this.logger.log(`Staff ${req.user.id || req.user.userId} creating gate pass`);
+    return this.gatePassService.createForStaff(req.user.id || req.user.userId, createGatePassDto);
+  }
+
+  // Create a new gate pass request (HOD only)
+  @Post('hod')
+  @Roles('hod')
+  createHodGatePass(@Request() req, @Body() createGatePassDto: CreateHodGatePassDto) {
+    this.logger.log(`HOD ${req.user.id || req.user.userId} creating gate pass`);
+    return this.gatePassService.createForHod(req.user.id || req.user.userId, createGatePassDto);
+  }
+
   // Get all gate passes with filtering (admin only)
   @Get()
   @Roles('admin')
@@ -59,12 +77,25 @@ export class GatePassController {
       ? req.user.role 
       : (req.user.role?.name || '');
     
-    // Only students can access this endpoint
-    if (roleName !== 'student') {
-      throw new ForbiddenException('Only students can access this endpoint');
+    // Check role and call appropriate service method
+    if (roleName === 'student') {
+      return this.gatePassService.findByStudent(userId);
+    } else if (roleName === 'staff') {
+      return this.gatePassService.findByStaff(userId);
+    } else if (roleName === 'hod') {
+      return this.gatePassService.findByHod(userId);
+    } else {
+      throw new ForbiddenException('User role not authorized to view requests');
     }
-    
-    return this.gatePassService.findByStudent(userId);
+  }
+
+  // NEW ENDPOINT: Get all gate passes for a specific HOD
+  @Get('hod/my-passes')
+  @Roles('hod')
+  async findHodGatePasses(@Request() req) {
+    const hodId = req.user.id || req.user.userId;
+    this.logger.log(`HOD ${hodId} retrieving their own gate passes`);
+    return this.gatePassService.findByHod(hodId);
   }
 
   // Get gate passes pending staff approval
@@ -229,5 +260,20 @@ export class GatePassController {
     const hostelWardenId = req.user.id || req.user.userId;
     this.logger.log(`Hostel Warden ${hostelWardenId} updating gate pass ${id} with status ${updateDto.status}`);
     return this.gatePassService.updateByHostelWarden(id, hostelWardenId, updateDto);
+  }
+
+  // Temporary endpoint to test SMS functionality
+  @Get('test-sms-notification')
+  @Roles('admin', 'security')
+  async testSmsNotification() {
+    this.logger.log('Test SMS notification endpoint called');
+    return this.gatePassService.testSmsNotification();
+  }
+
+  // Update the test endpoint to ignore authentication
+  @Get('test-sms-notification-public')
+  async testSmsNotificationPublic() {
+    this.logger.log('Public test SMS notification endpoint called');
+    return this.gatePassService.testSmsNotification();
   }
 } 

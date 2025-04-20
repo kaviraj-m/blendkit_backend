@@ -25,6 +25,7 @@ import { Complaint } from './entities/complaint.entity';
 import { ComplaintsModule } from './complaints/complaints.module';
 import { GatePassModule } from './gate-pass/gate-pass.module';
 import { EmailModule } from './email/email.module';
+import { NotificationModule } from './notification/notification.module';
 import { 
   Role, 
   College, 
@@ -92,6 +93,7 @@ import { SeedModule } from './database/seeds/seed.module';
     ComplaintsModule,
     GatePassModule,
     EmailModule,
+    NotificationModule,
     SocialModule,
     MediaModule,
   ],

@@ -39,6 +39,9 @@ export class User {
   @Column({ length: 15, nullable: true })
   phone: string;
 
+  @Column({ length: 15, nullable: true })
+  parent_number: string; // Parent's contact number
+
   // Foreign key relationships
   @ManyToOne(() => Department, department => department.users)
   @JoinColumn({ name: 'department_id' })
